@@ -1,0 +1,39 @@
+{
+  "_说明": "机器人热配置模板。首次使用请复制为 config.json（或直接运行一次『一键部署.bat』会自动生成）",
+  "_说明2": "部署后可用群/私聊命令修改（设置等级 / 添加广告词 / 设置欢迎 / 添加管理群 等），无需手改",
+
+  "welcome": "欢迎 {at} 加入本群～请先看群公告",
+  "farewell": "{nickname} 离开了本群",
+
+  "auto_approve": {
+    "enabled": true,
+    "min_level": 30,
+    "groups": [],
+    "fallback": "ignore",
+    "notice": "已自动通过 {at} 的入群申请（QQ等级 {level}）",
+    "reject_reason": "QQ等级未达到本群要求（需 {min_level} 级）"
+  },
+
+  "banned_words": [
+    "广告词示例"
+  ],
+  "banned_word_mute_seconds": 600,
+
+  "ad_patterns": [
+    "(微信|加微|VX|vx|V信|威信)[号:\\s]*[a-zA-Z0-9_-]{5,}",
+    "[Qq][Qq][号:\\s]*[0-9]{5,12}",
+    "(兼职|刷单|代练|代购|低价充值|免费送|福利群|招聘兼职)",
+    "(扫码|扫一扫|二维码).{0,10}(进群|加群|领取)",
+    "https?://\\S+"
+  ],
+  "ad_mute_seconds": 3600,
+  "ad_alert": "检测到疑似广告，已撤回并禁言 {mention} 1小时",
+
+  "managed_groups": [],
+  "_managed_groups_说明": "留空 = 所有群都生效（机器人是管理员的群）；填了群号 = 只在名单内的群运行，其余群完全静默。建议用私聊『添加管理群 群号』维护",
+
+  "admin_users": [
+    "1000000001"
+  ],
+  "_admin_users_说明": "私聊管理命令的授权名单（除 .env 里的超级管理员外）"
+}

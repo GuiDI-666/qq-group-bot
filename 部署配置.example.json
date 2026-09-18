@@ -1,0 +1,31 @@
+{
+  "_说明": "一键部署配置模板。复制此文件为『部署配置.json』，改成你自己的信息后再运行『一键部署.bat』",
+  "_说明2": "仓库不包含任何真实账号信息；『部署配置.json』已被 .gitignore 排除，不会上传",
+
+  "bot_qq": "1000000000",
+  "bot_qq_说明": "机器人使用的QQ小号，需要已有历史登录记录（首次登录需扫码，之后可免扫码）",
+
+  "superusers": ["1000000001"],
+  "superusers_说明": "超级管理员的QQ号列表（你自己的大号），拥有全部指令权限",
+
+  "bot_port": 8080,
+  "bot_port_说明": "机器人服务监听端口，需与 ws_url 中端口一致",
+
+  "ws_url": "ws://127.0.0.1:8080/onebot/v11/ws",
+  "ws_url_说明": "NapCat 反向 WebSocket 地址，端口要与 bot_port 一致",
+
+  "napcat_dir": "C:\\NapCat",
+  "napcat_dir_说明": "NapCat 安装目录（会自动解压创建 NapCat 子目录）。Windows 建议写 C:\\NapCat；也可留空使用默认值",
+
+  "napcat_http_port": 3000,
+  "napcat_http_port_说明": "NapCat HTTP 接口端口，供看门狗检测登录状态用（勿与其他程序冲突）",
+
+  "napcat_http_token": "napcat-http-token",
+  "napcat_http_token_说明": "NapCat HTTP 接口访问令牌，仅本机使用，改成任意字符串即可",
+
+  "auto_install_vcredist": true,
+  "auto_install_vcredist_说明": "检测到缺少 msvcp140.dll 时自动静默安装 VC++ 运行库（需要管理员权限）",
+
+  "project_dir": "",
+  "project_dir_说明": "留空 = 使用本文件夹内的 qq-group-bot；也可指定其他路径"
+}
