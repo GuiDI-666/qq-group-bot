@@ -1,10 +1,55 @@
 @echo off
-chcp 65001 >nul
-title QQç¾¤ç®¡æœºå™¨äºº ä¸€é”®éƒ¨ç½²
-echo æ­£åœ¨å¯åŠ¨éƒ¨ç½²å‘å¯¼ï¼ˆå¦‚ç¼º VC++ è¿è¡Œåº“ä¼šè¯·æ±‚ç®¡ç†å‘˜æƒé™ï¼‰...
-python "%~dp0deploy\deploy.py"
+chcp 936 >nul
+title QQÈº¹Ü»úÆ÷ÈË Ò»¼ü²¿Êð
+cd /d "%~dp0"
+setlocal enabledelayedexpansion
+
+echo ==========================================
+echo   QQÈº¹Ü»úÆ÷ÈË Ò»¼ü²¿Êð
+echo   È± VC++ ÔËÐÐ¿âÊ±»áÇëÇó¹ÜÀíÔ±È¨ÏÞ
+echo ==========================================
+echo.
+set "PY="
+call :TRY "%~dp0venv\Scripts\python.exe"
+call :TRY "%~dp0.venv\Scripts\python.exe"
+call :TRY "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+call :TRY "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+call :TRY "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+call :TRY "C:\Python313\python.exe"
+call :TRY "C:\Python312\python.exe"
+call :TRY "C:\Python311\python.exe"
+call :TRY "C:\Program Files\Python313\python.exe"
+call :TRY "C:\Program Files\Python312\python.exe"
+call :TRY "C:\Program Files\Python311\python.exe"
+if not defined PY (
+  for /f "delims=" %%P in ('where python 2^>nul ^| findstr /i /v "WindowsApps"') do call :TRY "%%P"
+)
+if not defined PY (
+  echo [´íÎó] Ã»ÕÒµ½ Python 3.9 ~ 3.13¡£
+  echo.
+  echo   Á½¸ö°ì·¨£¬ÈÎÑ¡ÆäÒ»£º
+  echo     1. Ë«»÷¡º·þÎñÆ÷²¿Êð.bat¡»£¬Ëü»á×Ô¶¯ÏÂÔØ°²×°ºÏÊÊµÄ Python
+  echo     2. ×Ô¼º×°Ò»¸ö Python 3.13£¬°²×°Ê±¹´Ñ¡ "Add python.exe to PATH"
+  echo.
+  pause
+  exit /b 1
+)
+echo Ê¹ÓÃ Python£º!PY!
+echo.
+
+"!PY!" "%~dp0deploy\deploy.py"
 if errorlevel 1 (
   echo.
-  echo éƒ¨ç½²å‡ºé”™ï¼Œè¯·æŠŠä¸Šæ–¹æŠ¥é”™ä¿¡æ¯å‘ç»™ç®¡ç†å‘˜ã€‚
+  echo ²¿Êð³ö´í£¬Çë°ÑÉÏ·½±¨´íÐÅÏ¢·¢¸ø¹ÜÀíÔ±¡£
   pause
 )
+exit /b 0
+
+:TRY
+if defined PY exit /b 0
+if "%~1"=="" exit /b 0
+if not exist "%~1" exit /b 0
+"%~1" -c "import sys;v=sys.version_info;raise SystemExit(0 if v[0]==3 and v[1] in range(9,14) else 1)" >nul 2>nul
+if errorlevel 1 exit /b 0
+set "PY=%~1"
+exit /b 0

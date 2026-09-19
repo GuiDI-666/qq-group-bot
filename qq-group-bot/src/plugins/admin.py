@@ -73,7 +73,7 @@ async def handle_mute(bot: Bot, event: MessageEvent, args: Message = CommandArg(
         await mute.finish("该命令仅在群聊中可用")
     target, minutes = _extract_target_and_duration(args, default_minutes=10)
     if target is None:
-        await mute.finish("用法：禁言 @某人 或 QQ号 [分钟数，默认10]\n例：禁言 1000123456 30")
+        await mute.finish("用法：/禁言 @某人 或 QQ号 [分钟数，默认10]\n例：/禁言 1000123456 30")
     if target == event.self_id:
         await mute.finish("不能禁言我自己🥲")
     if minutes <= 0 or minutes > 43200:
@@ -93,7 +93,7 @@ async def handle_unmute(bot: Bot, event: MessageEvent, args: Message = CommandAr
         await unmute.finish("该命令仅在群聊中可用")
     target, _ = _extract_target_and_duration(args, default_minutes=10)
     if target is None:
-        await unmute.finish("用法：解禁 @某人 或 QQ号")
+        await unmute.finish("用法：/解禁 @某人 或 QQ号")
     try:
         await bot.set_group_ban(group_id=event.group_id, user_id=target, duration=0)
     except ActionFailed as e:
@@ -110,7 +110,7 @@ async def handle_kick(bot: Bot, event: MessageEvent, args: Message = CommandArg(
         await kick.finish("只有群主可以踢人")
     target, _ = _extract_target_and_duration(args, default_minutes=10)
     if target is None:
-        await kick.finish("用法：踢出 @某人 或 QQ号")
+        await kick.finish("用法：/踢出 @某人 或 QQ号")
     try:
         await bot.set_group_kick(group_id=event.group_id, user_id=target)
     except ActionFailed as e:

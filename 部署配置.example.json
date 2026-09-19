@@ -26,6 +26,34 @@
   "auto_install_vcredist": true,
   "auto_install_vcredist_说明": "检测到缺少 msvcp140.dll 时自动静默安装 VC++ 运行库（需要管理员权限）",
 
+  "zombie_check": true,
+  "zombie_check_说明": "僵尸会话检测（假在线自愈）：定期实测发一条私聊消息，连续失败自动重登。QQ 会话可能僵死为收发全断但接口谎报在线的状态，登录接口查不出来",
+  "zombie_check_interval": 3600,
+  "zombie_check_interval_说明": "心跳自检间隔（秒），默认 3600 = 每小时一次；自检消息会发到 zombie_check_target（默认超级管理员大号），可忽略",
+  "zombie_check_target": "",
+  "zombie_check_target_说明": "心跳自检消息接收者 QQ 号；留空 = 用 superusers 里的第一个号",
+
+  "max_relogin_attempts": 2,
+  "max_relogin_attempts_说明": "登录失效后自动重登的最大次数；连续失败达该次数即放弃重试、停止服务并退出，待管理员手动运行『启动机器人.bat』恢复（避免无限重试加重风控）",
+
+  "alert_email_enabled": false,
+  "alert_email_enabled_说明": "掉线/需要扫码时发邮件通知（需填下面的 SMTP 信息，把本项改为 true 才生效）",
+  "smtp_host": "smtp.qq.com",
+  "smtp_host_说明": "SMTP 服务器，QQ邮箱为 smtp.qq.com；163 为 smtp.163.com",
+  "smtp_port": 465,
+  "smtp_port_说明": "465 = SSL（推荐）；587 = STARTTLS",
+  "smtp_ssl": true,
+  "smtp_ssl_说明": "true 用 SSL（465），false 用 STARTTLS（587）",
+  "smtp_user": "",
+  "smtp_user_说明": "发件邮箱账号，如 yourname@qq.com",
+  "smtp_pass": "",
+  "smtp_pass_说明": "邮箱 SMTP 授权码（不是登录密码！QQ邮箱在 设置→账户 里开启服务后生成）",
+  "alert_email_to": "",
+  "alert_email_to_说明": "接收告警的邮箱；填手机邮箱（如 手机号@139.com）可收到短信提醒",
+
+  "python_path": "",
+  "python_path_说明": "运行机器人服务所用 Python 解释器；留空 = 自动探测（优先项目内 venv，其次 PATH 中已安装 nonebot 的解释器）",
+
   "project_dir": "",
   "project_dir_说明": "留空 = 使用本文件夹内的 qq-group-bot；也可指定其他路径"
 }

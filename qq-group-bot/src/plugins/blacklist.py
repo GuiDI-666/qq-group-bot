@@ -84,7 +84,7 @@ async def handle_black(bot: Bot, event: MessageEvent, args: Message = CommandArg
         await black.finish("该命令仅在群聊中可用")
     target = _extract_target(args)
     if target is None:
-        await black.finish("用法：拉黑 @某人 或 QQ号 [原因]\n例：拉黑 123456 发广告")
+        await black.finish("用法：/拉黑 @某人 或 QQ号 [原因]\n例：/拉黑 123456 发广告")
     if target == event.self_id:
         await black.finish("不能拉黑我自己🥲")
     # 原因 = 去掉目标数字/@后剩下的文本
@@ -113,7 +113,7 @@ async def handle_unblack(bot: Bot, event: MessageEvent, args: Message = CommandA
         await unblack.finish("该命令仅在群聊中可用")
     target = _extract_target(args)
     if target is None:
-        await unblack.finish("用法：解除拉黑 @某人 或 QQ号")
+        await unblack.finish("用法：/解除拉黑 @某人 或 QQ号")
     data = _load()
     if str(target) not in data:
         await unblack.finish(f"{_mention(target)} 不在黑名单中")

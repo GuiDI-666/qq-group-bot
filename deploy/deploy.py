@@ -46,6 +46,34 @@ def load_config() -> dict:
         return json.load(f)
 
 
+def napcat_root_ok(raw) -> bool:
+    """配置里的 napcat_dir 在本机是否可用（父目录存在即可自动创建）。"""
+    raw = (raw or "").strip()
+    if not raw:
+        return False
+    try:
+        p = Path(raw)
+        return p.is_absolute() and p.parent.exists()
+    except OSError:
+        return False
+
+
+def default_napcat_root() -> Path:
+    """新机器上的默认协议端目录：放盘符根目录，避开中文/空格路径给 QQ 内核添麻烦。"""
+    if os.name == "nt":
+        return Path("C:/NapCat")
+    return Path.home() / "NapCat"
+
+
+def save_config(cfg: dict) -> None:
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+    except Exception as e:
+        print(f"⚠ 回写 部署配置.json 失败：{e}")
+
+
 def ensure_project_config(project_dir: Path) -> None:
     """确保机器人热配置存在：仓库只带 config.example.json，首次运行复制一份。"""
     target = project_dir / "config.json"
@@ -65,15 +93,36 @@ def check_python() -> None:
     log("1/7", f"Python 环境OK（{sys.version.split()[0]}）")
 
 
+def pip_indexes() -> list:
+    """依赖源候选：环境变量 QQBOT_PIP_INDEX → 阿里云镜像 → 官方 PyPI。
+
+    国内服务器直连 pypi.org 常超时，阿里云镜像稳定得多；镜像缺包时自动回落官方源。
+    """
+    tries = []
+    env = str(os.environ.get("QQBOT_PIP_INDEX") or "").strip()
+    if env:
+        tries.append(["-i", env])
+    tries.append(["-i", "https://mirrors.aliyun.com/pypi/simple/",
+                  "--trusted-host", "mirrors.aliyun.com"])
+    tries.append(["-i", "https://pypi.org/simple"])
+    return tries
+
+
 def install_deps() -> None:
     req = DEPS / "requirements-full.txt"
     log("2/7", "安装 Python 依赖（首次安装约1-2分钟）...")
-    r = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req), "-q"])
-    if r.returncode != 0:
-        print("❌ 依赖安装失败，请检查网络后重试")
-        input("按回车键退出...")
-        sys.exit(1)
-    log("2/7", "依赖安装完成")
+    for extra in pip_indexes():
+        r = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", str(req), "-q",
+             "--disable-pip-version-check", *extra]
+        )
+        if r.returncode == 0:
+            log("2/7", "依赖安装完成")
+            return
+        print(f"⚠ 依赖安装失败（源：{extra[1]}），换一个源重试…")
+    print("❌ 依赖安装失败，请检查网络后重试")
+    input("按回车键退出...")
+    sys.exit(1)
 
 
 def check_vcredist(cfg: dict) -> None:
@@ -98,6 +147,22 @@ def check_vcredist(cfg: dict) -> None:
     log("3/7", f"VC++ 运行库安装完成（退出码 {r.returncode}，0/1638=正常，3010=需重启）")
 
 
+def zip_top_layout(zip_path: Path) -> str:
+    """判断离线包的结构：'prefixed'（自带 NapCat/ 层）还是 'flat'（根目录就是本体）。
+
+    两种包都出现过，解压位置不同：
+      prefixed -> 解压到 <napcat_root>，其下才会有 NapCat/
+      flat     -> 解压到 <napcat_root>/NapCat 里
+    新机器上若不区分，协议端会落在错误层级、node.exe 找不到，机器人永远起不来。
+    """
+    with zipfile.ZipFile(zip_path) as z:
+        for name in z.namelist():
+            head = name.replace("\\", "/").split("/", 1)[0]
+            if head not in ("", "."):
+                return "prefixed" if head == "NapCat" else "flat"
+    return "flat"
+
+
 def deploy_napcat(cfg: dict) -> Path:
     napcat_root = Path(cfg["napcat_dir"])
     napcat_dir = napcat_root / "NapCat"
@@ -109,10 +174,17 @@ def deploy_napcat(cfg: dict) -> Path:
             print(f"❌ 缺少 {zip_path}，无法部署 NapCat")
             input("按回车键退出...")
             sys.exit(1)
-        log("4/7", f"解压 NapCat 到 {napcat_root} （约30秒）...")
-        napcat_root.mkdir(parents=True, exist_ok=True)
+        layout = zip_top_layout(zip_path)
+        target = napcat_root if layout == "prefixed" else napcat_dir
+        log("4/7", f"解压 NapCat 到 {target} （约30秒，包结构 {layout}）...")
+        target.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(zip_path) as z:
-            z.extractall(napcat_root)
+            z.extractall(target)
+        if not (napcat_dir / "index.js").exists():
+            print(f"❌ 解压后仍找不到 {napcat_dir / 'index.js'}")
+            print("   离线包结构异常，请重新获取 deps/NapCat.Shell.Windows.Node.zip")
+            input("按回车键退出...")
+            sys.exit(1)
 
     # 补齐 QQ 内核依赖的 OpenSSL DLL
     for dll in ("crypto.dll", "ssl.dll"):
@@ -195,8 +267,8 @@ def write_bot_env(cfg: dict, project_dir: Path) -> None:
         f"PORT={cfg['bot_port']}\n"
         f"LOG_LEVEL=INFO\n"
         f"SUPERUSERS={json.dumps(cfg['superusers'])}\n"
-        "# 命令前缀：允许直接发裸命令（如「禁言 @某人」），也支持「/禁言」。删除会导致裸命令失效\n"
-        'COMMAND_START=["", "/"]\n'
+        "# 命令前缀：只认「/命令」形式（如 /禁言、/ping）；普通聊天文字不会误触发\n"
+        'COMMAND_START=["/"]\n'
     )
     if keep:
         env += "\n# ---- 以下为保留的自定义配置 ----\n" + "\n".join(keep) + "\n"
@@ -207,11 +279,19 @@ def write_bot_env(cfg: dict, project_dir: Path) -> None:
 
 def write_start_bat(cfg: dict, project_dir: Path, napcat_dir: Path) -> None:
     bat = BASE / "启动机器人.bat"
-    # 用 %~dp0 自动定位脚本所在目录，避免把本机绝对路径写进仓库
+    # 用 %~dp0 自动定位脚本所在目录，避免把本机绝对路径写进仓库。
+    #
+    # 两个坑必须避开：
+    #   1) 文件必须是 GBK + chcp 936。UTF-8 中文 bat 配 chcp 65001 时 cmd 会按字节
+    #      偏移错位重读文件，把 echo 文本当命令执行，双击直接闪退。
+    #   2) 必须自己挑「装了 nonebot」的解释器。电脑上可能装了多个 Python，
+    #      裸 python 可能落到没装 nonebot 的那个，导致机器人服务反复秒退。
     content = """@echo off
-chcp 65001 >nul
+chcp 936 >nul
 title QQ群管机器人 一键启动（看门狗模式）
 cd /d "%~dp0"
+setlocal enabledelayedexpansion
+
 echo ==========================================
 echo   QQ群管机器人 一键启动
 echo   看门狗守护：协议端(NapCat) + 机器人(NoneBot)
@@ -222,15 +302,44 @@ echo 机器人账号 / 端口 / 管理群：见 部署配置.json 与 qq-group-b
 echo 关闭本窗口即停止守护（协议端与机器人会一并退出）
 echo.
 
-python "%~dp0deploy\\watchdog.py"
+rem ---------- 先挑一个"装了 nonebot"的 Python ----------
+set "PY="
+if exist "%~dp0venv\\Scripts\\python.exe" set "PY=%~dp0venv\\Scripts\\python.exe"
+if not defined PY if exist "%~dp0.venv\\Scripts\\python.exe" set "PY=%~dp0.venv\\Scripts\\python.exe"
+
+if not defined PY (
+  for /f "delims=" %%P in ('where python 2^>nul ^| findstr /i /v "WindowsApps"') do (
+    if not defined PY (
+      "%%P" -c "import nonebot" >nul 2>nul
+      if !errorlevel! equ 0 set "PY=%%P"
+    )
+  )
+)
+
+if not defined PY (
+  echo [错误] 没有找到"已安装 nonebot"的 Python 解释器。
+  echo.
+  echo   三种解决办法（任选其一）：
+  echo     1. 双击『一键部署.bat』，让脚本自动装依赖
+  echo     2. 双击『服务器部署.bat』（服务器/新机器一键准备）
+  echo     3. 在 部署配置.json 里写死解释器路径，例如：
+  echo          "python_path": "C:\\\\Python313\\\\python.exe"
+  echo.
+  pause
+  exit /b 1
+)
+
+echo 使用 Python：!PY!
+echo.
+"!PY!" "%~dp0deploy\\watchdog.py"
 
 echo.
 echo 看门狗已退出。按任意键关闭窗口。
 pause >nul
 """
-    with open(bat, "w", encoding="utf-8") as f:
+    with open(bat, "w", encoding="gbk", newline="\r\n") as f:
         f.write(content)
-    log("7/7", f"已生成启动脚本 {bat}（看门狗守护模式）")
+    log("7/7", f"已生成启动脚本 {bat}（看门狗守护模式，GBK 编码）")
 
 
 def main():
@@ -243,6 +352,15 @@ def main():
         print(f"❌ 在 {project_dir} 找不到 bot.py，请检查 部署配置.json 的 project_dir")
         input("按回车键退出...")
         sys.exit(1)
+
+    # 换机器（例如从本机搬到服务器）时，旧的 napcat_dir 往往指向别的机器的用户目录，
+    # 不纠正的话协议端会被解压到一个莫名其妙的位置，看门狗也找不到它。
+    if not napcat_root_ok(cfg.get("napcat_dir")):
+        old = cfg.get("napcat_dir")
+        cfg["napcat_dir"] = str(default_napcat_root())
+        print(f"⚠ 配置里的 napcat_dir 在本机不可用：{old}")
+        print(f"  已自动改用：{cfg['napcat_dir']}（并写回 部署配置.json）")
+        save_config(cfg)
 
     check_python()
     install_deps()

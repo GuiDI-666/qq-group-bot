@@ -51,7 +51,7 @@ async def handle_set_level(event: MessageEvent, args: Message = CommandArg()):
         await set_level.finish("该命令仅在群聊中可用")
     text = _plain(args)
     if not text.isdigit() or not (1 <= int(text) <= 100):
-        await set_level.finish("用法：设置等级 数字（1~100）\n例：设置等级 30")
+        await set_level.finish("用法：/设置等级 数字（1~100）\n例：/设置等级 30")
     cfg = _load()
     cfg.setdefault("auto_approve", {})["min_level"] = int(text)
     _save(cfg)
@@ -68,7 +68,7 @@ async def handle_add_ad(event: MessageEvent, args: Message = CommandArg()):
         await add_ad.finish("该命令仅在群聊中可用")
     text = _plain(args)
     if not text:
-        await add_ad.finish("用法：添加广告 关键词或正则\n例：添加广告 代肝|低价代练")
+        await add_ad.finish("用法：/添加广告 关键词或正则\n例：/添加广告 代肝|低价代练")
     try:
         re.compile(text)
     except re.error as e:
@@ -91,7 +91,7 @@ async def handle_del_ad(event: MessageEvent, args: Message = CommandArg()):
         await del_ad.finish("该命令仅在群聊中可用")
     text = _plain(args)
     if not text:
-        await del_ad.finish("用法：删除广告 关键词或正则（先发 广告列表 查看可删项）")
+        await del_ad.finish("用法：/删除广告 关键词或正则（先发 /广告列表 查看可删项）")
     cfg = _load()
     patterns = cfg.get("ad_patterns", [])
     if text not in patterns:
@@ -127,7 +127,7 @@ async def handle_set_welcome(event: MessageEvent, args: Message = CommandArg()):
     text = _plain(args)
     if not text:
         await set_welcome.finish(
-            "用法：设置欢迎 欢迎词\n{at} 会被替换为 @新人\n例：设置欢迎 欢迎 {at} 加入～"
+            "用法：/设置欢迎 欢迎词\n{at} 会被替换为 @新人\n例：/设置欢迎 欢迎 {at} 加入～"
         )
     cfg = _load()
     cfg["welcome"] = text
@@ -146,7 +146,7 @@ async def handle_set_farewell(event: MessageEvent, args: Message = CommandArg())
     text = _plain(args)
     if not text:
         await set_farewell.finish(
-            "用法：设置退群 退群提示语\n{nickname} 会被替换为退群者昵称\n例：设置退群 {nickname} 悄悄地走了"
+            "用法：/设置退群 退群提示语\n{nickname} 会被替换为退群者昵称\n例：/设置退群 {nickname} 悄悄地走了"
         )
     cfg = _load()
     cfg["farewell"] = text
@@ -178,7 +178,7 @@ async def handle_add_managed(event: MessageEvent, args: Message = CommandArg()):
         return  # 未授权私聊，静默
     text = _plain(args)
     if not text.isdigit():
-        await add_managed.finish("私聊用法：添加管理群 群号\n例：添加管理群 1007680907")
+        await add_managed.finish("私聊用法：/添加管理群 群号\n例：/添加管理群 1007680907")
     gid = int(text)
     cfg = _load()
     groups = cfg.setdefault("managed_groups", [])
@@ -203,7 +203,7 @@ async def handle_del_managed(event: MessageEvent, args: Message = CommandArg()):
         return
     text = _plain(args)
     if not text.isdigit():
-        await del_managed.finish("私聊用法：移除管理群 群号\n例：移除管理群 1007680907")
+        await del_managed.finish("私聊用法：/移除管理群 群号\n例：/移除管理群 1007680907")
     gid = int(text)
     cfg = _load()
     groups = cfg.get("managed_groups", [])
@@ -230,7 +230,7 @@ async def handle_list_managed(event: MessageEvent):
     if not groups:
         await list_managed.finish(
             "管理群名单为空 = 机器人当前对所有群生效\n"
-            "私聊发『添加管理群 群号』可切换为白名单模式（仅名单内群运行）"
+            "私聊发『/添加管理群 群号』可切换为白名单模式（仅名单内群运行）"
         )
     lines = [f"白名单模式（仅以下群运行），共 {len(groups)} 个："]
     lines += [f"- {g}" for g in groups]

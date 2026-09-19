@@ -1,19 +1,61 @@
 @echo off
-chcp 65001 >nul
-title QQç¾¤ç®¡æœºå™¨äºº ä¸€é”®å¯åŠ¨ï¼ˆçœ‹é—¨ç‹—æ¨¡å¼ï¼‰
+chcp 936 >nul
+title QQÈº¹Ü»úÆ÷ÈË Ò»¼üÆô¶¯£¨¿´ÃÅ¹·Ä£Ê½£©
 cd /d "%~dp0"
+setlocal enabledelayedexpansion
+
 echo ==========================================
-echo   QQç¾¤ç®¡æœºå™¨äºº ä¸€é”®å¯åŠ¨
-echo   çœ‹é—¨ç‹—å®ˆæŠ¤ï¼šåè®®ç«¯(NapCat) + æœºå™¨äºº(NoneBot)
-echo   ç™»å½•å¤±æ•ˆä¼šè‡ªåŠ¨é‡æ–°ç™»å½•ï¼Œè¿›ç¨‹æŽ‰çº¿ä¼šè‡ªåŠ¨æ‹‰èµ·
+echo   QQÈº¹Ü»úÆ÷ÈË Ò»¼üÆô¶¯
+echo   ¿´ÃÅ¹·ÊØ»¤£ºÐ­Òé¶Ë(NapCat) + »úÆ÷ÈË(NoneBot)
+echo   µÇÂ¼Ê§Ð§»á×Ô¶¯ÖØÐÂµÇÂ¼£¬½ø³ÌµôÏß»á×Ô¶¯À­Æð
 echo ==========================================
 echo.
-echo æœºå™¨äººè´¦å· / ç«¯å£ / ç®¡ç†ç¾¤ï¼šè§ éƒ¨ç½²é…ç½®.json ä¸Ž qq-group-bot\config.json
-echo å…³é—­æœ¬çª—å£å³åœæ­¢å®ˆæŠ¤ï¼ˆåè®®ç«¯ä¸Žæœºå™¨äººä¼šä¸€å¹¶é€€å‡ºï¼‰
+echo »úÆ÷ÈËÕËºÅ / ¶Ë¿Ú / ¹ÜÀíÈº£º¼û ²¿ÊðÅäÖÃ.json Óë qq-group-bot\config.json
+echo ¹Ø±Õ±¾´°¿Ú¼´Í£Ö¹ÊØ»¤£¨Ð­Òé¶ËÓë»úÆ÷ÈË»áÒ»²¢ÍË³ö£©
 echo.
 
-python "%~dp0deploy\watchdog.py"
+rem ---------- ÏÈÌôÒ»¸ö"×°ÁË nonebot"µÄ Python ----------
+rem µçÄÔÉÏ¿ÉÄÜ×°ÁË¶à¸ö Python£¬Ö»ÓÐ×°ÁË nonebot µÄÄÇ¸ö²ÅÄÜÅÜ»úÆ÷ÈË·þÎñ¡£
+rem ÕâÀïÖð¸öÊÔ£¬ÌôµÚÒ»¸öÄÜ import nonebot µÄ£¬±ÜÃâ³öÏÖ
+rem "¿´ÃÅ¹·ÆðÀ´ÁË¡¢µ«»úÆ÷ÈË·þÎñÒòÈ±ÉÙ nonebot ·´¸´ÃëÍË"µÄÇé¿ö¡£
+set "PY="
+if exist "%~dp0venv\Scripts\python.exe" set "PY=%~dp0venv\Scripts\python.exe"
+if not defined PY if exist "%~dp0.venv\Scripts\python.exe" set "PY=%~dp0.venv\Scripts\python.exe"
+
+if not defined PY (
+  for /f "delims=" %%P in ('where python 2^>nul ^| findstr /i /v "WindowsApps"') do (
+    if not defined PY (
+      "%%P" -c "import nonebot" >nul 2>nul
+      if !errorlevel! equ 0 set "PY=%%P"
+    )
+  )
+)
+
+rem ×îºó¶µµ×£ºWorkBuddy ÄÚÖÃ Python£¨±¾»ú nonebot Ä¿Ç°×°ÔÚÕâÀï£»±ðµÄ»úÆ÷ÉÏÒ»°ãÓÃ²»µ½£©
+for /d %%D in ("%USERPROFILE%\.workbuddy\binaries\python\versions\*") do (
+  if not defined PY if exist "%%D\python.exe" (
+    "%%D\python.exe" -c "import nonebot" >nul 2>nul
+    if !errorlevel! equ 0 set "PY=%%D\python.exe"
+  )
+)
+
+if not defined PY (
+  echo [´íÎó] Ã»ÓÐÕÒµ½"ÒÑ°²×° nonebot"µÄ Python ½âÊÍÆ÷¡£
+  echo.
+  echo   ÈýÖÖ½â¾ö°ì·¨£¨ÈÎÑ¡ÆäÒ»£©£º
+  echo     1. Ë«»÷¡ºÒ»¼ü²¿Êð.bat¡»£¬ÈÃ½Å±¾×Ô¶¯°²×°ÒÀÀµ
+  echo     2. °Ñ×°ÓÐ nonebot µÄ python Ä¿Â¼¼Óµ½ÏµÍ³ PATH µÄ×îÇ°Ãæ
+  echo     3. ÔÚ ²¿ÊðÅäÖÃ.json ÀïÐ´ËÀ½âÊÍÆ÷Â·¾¶£¬ÀýÈç£º
+  echo          "python_path": "C:\\Python313\\python.exe"
+  echo.
+  pause
+  exit /b 1
+)
+
+echo Ê¹ÓÃ Python£º!PY!
+echo.
+"!PY!" "%~dp0deploy\watchdog.py"
 
 echo.
-echo çœ‹é—¨ç‹—å·²é€€å‡ºã€‚æŒ‰ä»»æ„é”®å…³é—­çª—å£ã€‚
+echo ¿´ÃÅ¹·ÒÑÍË³ö¡£°´ÈÎÒâ¼ü¹Ø±Õ´°¿Ú¡£
 pause >nul

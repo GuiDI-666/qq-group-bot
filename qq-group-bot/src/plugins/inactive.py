@@ -1,11 +1,11 @@
 """潜水成员查询：按 30 / 60 / 90 天拉取长期未发言的群成员名单。
 
 命令（管理员/群主/超级管理员可用）：
-  未发言            —— 默认 30 天
-  未发言 60         —— 60 天内没发过言
-  未发言 90         —— 90 天内没发过言
-  未发言 30 天      —— 支持带"天"字
-  私聊用法：未发言 群号 30
+  /未发言            —— 默认 30 天
+  /未发言 60         —— 60 天内没发过言
+  /未发言 90         —— 90 天内没发过言
+  /未发言 30 天      —— 支持带"天"字
+  私聊用法：/未发言 群号 30
 
 统计口径：
   - 数据来自协议端 get_group_member_list 的 last_sent_time（QQ 记录的最近发言时间）
@@ -67,7 +67,7 @@ def _parse_target(event: MessageEvent, args: Message) -> tuple[int | None, int, 
             days = int(tok)
 
     if gid is None:
-        return None, 0, "私聊用法：未发言 群号 [天数]\n例：未发言 123456789 30"
+        return None, 0, "私聊用法：/未发言 群号 [天数]\n例：/未发言 123456789 30"
     if days is None:
         days = DEFAULT_DAYS
     if days not in ALLOWED_DAYS:

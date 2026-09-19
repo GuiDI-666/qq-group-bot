@@ -9,13 +9,27 @@ qq-group-bot/config.json
 # ============ 大文件离线依赖不上传 ============
 deps/
 
+# ============ 项目自带虚拟环境（体积大，不入库）============
+venv/
+
 # ============ 运行时产物 ============
 logs/
 **/__pycache__/
 *.py[co]
 
+# 服务器/新机器部署时生成的日志与体检报告
+server-deploy-log.txt
+deploy-report.txt
+venv.machine-bound/
+
 # 运行期生成的名单存档（未发言名单等）
 qq-group-bot/data/reports/
+
+# 运行期状态数据（含真实操作者 QQ 号）
+qq-group-bot/data/silence.json
+
+# AI 助理工作区（本地记忆/会话，含私有信息，绝不入库）
+.workbuddy/
 
 # 需要人工扫码时才出现的二维码提醒文件
 需要扫码登录.png

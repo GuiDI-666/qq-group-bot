@@ -1,20 +1,57 @@
 @echo off
-chcp 65001 >nul
-title QQç¾¤ç®¡æœºå™¨äºº é‡æ–°ç™»å½•
+chcp 936 >nul
+title QQÈº¹Ü»úÆ÷ÈË ÖØÐÂµÇÂ¼
 cd /d "%~dp0"
-echo ==========================================
-echo   é‡æ–°ç™»å½•åè®®ç«¯ï¼ˆNapCatï¼‰
-echo   ä¼šé‡å¯ QQ åè®®ç«¯å¹¶å°è¯•å…æ‰«ç å¿«é€Ÿç™»å½•
-echo ==========================================
-echo.
-echo å¦‚æžœå…æ‰«ç å¤±è´¥ï¼Œä¼šè‡ªåŠ¨ç”ŸæˆäºŒç»´ç ï¼š
-echo   %~dp0éœ€è¦æ‰«ç ç™»å½•.png
-echo ï¼ˆç”¨æ‰‹æœº QQ æ‰«æè¯¥å›¾ç‰‡ï¼Œé€‰æ‹©æœºå™¨äººå°å·æŽˆæƒï¼‰
-echo.
-pause >nul
+setlocal enabledelayedexpansion
 
-python "%~dp0deploy\watchdog.py" --relogin
-
+echo ==========================================
+echo   ÖØÐÂµÇÂ¼Ð­Òé¶Ë£¨NapCat£©
+echo   »áÖØÆô QQ Ð­Òé¶Ë²¢³¢ÊÔÃâÉ¨Âë¿ìËÙµÇÂ¼
+echo ==========================================
 echo.
-echo å®Œæˆã€‚å¦‚ä»éœ€æ‰«ç ï¼Œè¯·çœ‹ä¸Šé¢çš„å›¾ç‰‡è·¯å¾„ã€‚
-pause >nul
+echo Èç¹ûÃâÉ¨ÂëÊ§°Ü£¬»á×Ô¶¯Éú³É¶þÎ¬Âë£º
+echo   %~dp0ÐèÒªÉ¨ÂëµÇÂ¼.png
+echo £¨ÓÃÊÖ»ú QQ É¨Ãè¸ÃÍ¼Æ¬£¬Ñ¡Ôñ»úÆ÷ÈËÐ¡ºÅÊÚÈ¨£©
+echo.
+set "PY="
+call :TRY "%~dp0venv\Scripts\python.exe"
+call :TRY "%~dp0.venv\Scripts\python.exe"
+call :TRY "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+call :TRY "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+call :TRY "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+call :TRY "C:\Python313\python.exe"
+call :TRY "C:\Python312\python.exe"
+call :TRY "C:\Python311\python.exe"
+call :TRY "C:\Program Files\Python313\python.exe"
+call :TRY "C:\Program Files\Python312\python.exe"
+call :TRY "C:\Program Files\Python311\python.exe"
+if not defined PY (
+  for /f "delims=" %%P in ('where python 2^>nul ^| findstr /i /v "WindowsApps"') do call :TRY "%%P"
+)
+if not defined PY (
+  echo [´íÎó] Ã»ÕÒµ½ Python 3.9 ~ 3.13¡£
+  echo.
+  echo   Á½¸ö°ì·¨£¬ÈÎÑ¡ÆäÒ»£º
+  echo     1. Ë«»÷¡º·þÎñÆ÷²¿Êð.bat¡»£¬Ëü»á×Ô¶¯ÏÂÔØ°²×°ºÏÊÊµÄ Python
+  echo     2. ×Ô¼º×°Ò»¸ö Python 3.13£¬°²×°Ê±¹´Ñ¡ "Add python.exe to PATH"
+  echo.
+  pause
+  exit /b 1
+)
+echo Ê¹ÓÃ Python£º!PY!
+echo.
+
+"!PY!" "%~dp0deploy\watchdog.py" --relogin
+echo.
+echo Íê³É¡£ÈçÈÔÐèÉ¨Âë£¬Çë¿´ÉÏÃæµÄÍ¼Æ¬Â·¾¶¡£
+pause
+exit /b 0
+
+:TRY
+if defined PY exit /b 0
+if "%~1"=="" exit /b 0
+if not exist "%~1" exit /b 0
+"%~1" -c "import sys;v=sys.version_info;raise SystemExit(0 if v[0]==3 and v[1] in range(9,14) else 1)" >nul 2>nul
+if errorlevel 1 exit /b 0
+set "PY=%~1"
+exit /b 0

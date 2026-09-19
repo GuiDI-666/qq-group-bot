@@ -2,7 +2,7 @@
 
 > 本项目的所有版本变更记录。新版本发布时在最上方追加。
 > 格式参考：[Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)
-> 当前版本：**v1.6.1**（见 `VERSION` 文件）
+> 当前版本：**v1.8.0**（见 `VERSION` 文件）
 
 ## 发布流程（给维护者）
 
@@ -15,6 +15,22 @@ python deploy/release.py v1.x.x "一句话说明"
 （release.py 会自动完成：更新 VERSION、写入 CHANGELOG 模板条目、commit 并打同名 tag，配置了 origin 远程仓库时自动 push）
 
 ---
+
+## [v1.8.0] - 2026-09-18
+
+### 变更（⚠ 行为变更）
+- **命令统一为 `/命令` 形式**：`command_start` 从 `{"", "/"}` 改为 `{"/"}`（`bot.py` 兜底 + `.env` + `.env.example` + 部署脚本同步修改）——直接发 `禁言`、`ping` 等裸命令**不再触发**，避免普通聊天里的"在吗""状态"等词误启动机器人
+- 帮助菜单与所有命令用法提示同步改为 `/命令` 写法（help / admin / blacklist / settings / inactive / silence / bot.py 静默提示）
+- 升级注意：`部署配置.json` 无需改动；只需更新 `qq-group-bot/bot.py`、`qq-group-bot/.env`（或其中的 `COMMAND_START` 行）与 `src/plugins/` 后重启机器人，之后所有命令都要加 `/`
+
+## [v1.7.2] - 2026-09-18
+
+### 变更
+- **看门狗重登不再无限重试**：登录失效后自动重登最多尝试 2 次（`部署配置.json` 新增 `max_relogin_attempts` 可调），连续失败即放弃——停止协议端与机器人服务、看门狗退出，写入最终恢复提示，待管理员手动运行『启动机器人.bat』；避免反复自动重登加重风控、也让"需要人工"不被无限重试掩盖
+- 移除旧的"3 次快速重试后每 15 分钟无限慢速重试"策略
+- **服务器/新机部署套件**：新增纯 ASCII 的 `服务器部署.bat`（自动找/装 Python 3.13、装依赖多源回落）与 `deploy/server_prepare.py`（环境体检、修正机器相关配置、处理失效 venv、统一 bat 编码）
+- 修复新机器部署三个坑：NapCat 离线包两种解压层级自动识别（`zip_top_layout`）、旧机器路径自动纠正、失效 venv 自动改名 `venv.machine-bound`
+- 全部 `.bat` 统一为 GBK + `chcp 936` + CRLF（修复 UTF-8 中文 bat 在 cmd 下编码错位导致的双击闪退）
 
 ## [v1.7.0] - 2026-09-18
 
