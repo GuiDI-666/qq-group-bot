@@ -28,13 +28,16 @@
 
   "zombie_check": true,
   "zombie_check_说明": "僵尸会话检测（假在线自愈）：定期实测发一条私聊消息，连续失败自动重登。QQ 会话可能僵死为收发全断但接口谎报在线的状态，登录接口查不出来",
-  "zombie_check_interval": 3600,
-  "zombie_check_interval_说明": "心跳自检间隔（秒），默认 3600 = 每小时一次；自检消息会发到 zombie_check_target（默认超级管理员大号），可忽略",
+  "zombie_check_interval": 1800,
+  "zombie_check_interval_说明": "心跳自检间隔（秒），默认 1800（30 分钟，假在线僵死靠它发现，越短发现越快）；自检消息会发到 zombie_check_target（默认超级管理员大号），可忽略",
   "zombie_check_target": "",
   "zombie_check_target_说明": "心跳自检消息接收者 QQ 号；留空 = 用 superusers 里的第一个号",
 
   "max_relogin_attempts": 2,
   "max_relogin_attempts_说明": "登录失效后自动重登的最大次数；连续失败达该次数即放弃重试、停止服务并退出，待管理员手动运行『启动机器人.bat』恢复（避免无限重试加重风控）",
+
+  "napcat_password": "",
+  "napcat_password_说明": "机器人QQ的登录密码（可留空）。留空=快速登录失效时需人工扫码；填写后（需 NapCat 4.16+）快速登录失败会自动改用密码登录。本文件已被 .gitignore 排除；机房 IP 密码登录可能触发验证码/新设备验证，届时仍需人工在 WebUI 处理",
 
   "alert_email_enabled": false,
   "alert_email_enabled_说明": "掉线/需要扫码时发邮件通知（需填下面的 SMTP 信息，把本项改为 true 才生效）",

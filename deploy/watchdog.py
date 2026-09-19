@@ -52,6 +52,7 @@ QR_FRESH = 300              # 二维码"新鲜期"：期间只等待扫码，不
 ZOMBIE_FAILS = 2            # 心跳自检连续失败多少次判定为僵尸会话
 ZOMBIE_RETRY_FAST = 60      # 已有失败记录后，下次自检的等待时间（秒）
 ZOMBIE_LOGIN_GRACE = 120    # 登录成功后先给会话这么久的稳定期再开始自检（秒）
+PROBE_NONE_LIMIT = 10       # 心跳自检连续多少次"无响应"判定协议端整体僵死（约 10 分钟）
 RELOGIN_GRACE = 150         # ``--relogin`` 期间：主循环在这段时间内不碰协议端（跨进程防双开）
 NAPCAT_START_GRACE = 75     # 协议端刚启动后的观察期：期间主循环不重复拉起（防双开）
 
@@ -75,6 +76,7 @@ state = {
     "log_pos": 0,
     "last_probe": 0.0,   # 上次心跳自检时间
     "probe_fails": 0,    # 心跳自检连续失败次数
+    "probe_none": 0,     # 心跳自检连续"无响应"次数（接口不通/挂起，无法判断）
 }
 
 
@@ -84,6 +86,33 @@ def log(msg: str) -> None:
     try:
         with open(LOGS / "watchdog.log", "a", encoding="utf-8") as f:
             f.write(line + "\n")
+    except Exception:
+        # 主日志写入失败（如被安全软件拦截新建文件）时降级到备用文件，黑匣子不能丢
+        try:
+            with open(LOGS / "watchdog.log.alt", "a", encoding="utf-8") as f:
+                f.write(line + "\n")
+        except Exception:
+            pass
+
+
+# ---------------- 控制台防护 ----------------
+def disable_quickedit() -> None:
+    """关闭控制台"快速编辑模式"。
+
+    Windows 控制台默认开启 QuickEdit：用户在窗口里用鼠标选中文字（哪怕无意点到）
+    会让所有 print 无限期阻塞，看门狗主循环整个挂起——表现为"窗口没输出、
+    探针也不发了，但进程还活着"。关掉它从根上杜绝这类人手误触的自愈停摆。
+    """
+    if not IS_WIN:
+        return
+    try:
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        h = k32.GetStdHandle(-10)  # STD_INPUT_HANDLE
+        mode = ctypes.c_uint()
+        if k32.GetConsoleMode(h, ctypes.byref(mode)):
+            # ENABLE_EXTENDED_FLAGS(0x80) 必须置位 QUICK_EDIT(0x40) 的修改才生效
+            k32.SetConsoleMode(h, (int(mode.value) | 0x0080) & ~0x0040)
     except Exception:
         pass
 
@@ -290,14 +319,14 @@ class Proc:
     def alive(self) -> bool:
         return self.popen is not None and self.popen.poll() is None
 
-    def start(self, args, cwd) -> None:
+    def start(self, args, cwd, env=None) -> None:
         try:
             f = open(self.logfile, "a", encoding="utf-8", errors="replace")
             f.write(f"\n===== {datetime.now():%Y-%m-%d %H:%M:%S} 启动 {self.name} =====\n")
             f.flush()
             self.popen = subprocess.Popen(
                 args, cwd=str(cwd), stdout=f, stderr=subprocess.STDOUT,
-                creationflags=CREATE_NO_WINDOW,
+                creationflags=CREATE_NO_WINDOW, env=env,
             )
             log(f"已启动 {self.name}（PID {self.popen.pid}）")
         except FileNotFoundError as e:
@@ -323,6 +352,19 @@ napcat = Proc("NapCat协议端", "napcat.log")
 bot = Proc("机器人服务", "bot.log")
 
 
+def napcat_extra_env(cfg: dict):
+    """密码回退登录（NapCat 4.16+ 支持）：配置了 napcat_password 时注入环境变量，
+    快速登录(-q)失效时 NapCat 会自动改用密码登录，避免人工扫码。
+    注意：机房 IP 上密码登录可能触发验证码/新设备验证，届时仍需人工在 WebUI 处理。"""
+    pwd = str(cfg.get("napcat_password") or "").strip()
+    if not pwd:
+        return None
+    env = os.environ.copy()
+    env["NAPCAT_QUICK_PASSWORD"] = pwd
+    log("已注入密码回退环境变量（快速登录失效时自动改用密码登录，不打印密码）")
+    return env
+
+
 def start_napcat(cfg: dict) -> None:
     napcat_dir, exe, _ = napcat_paths(cfg)
     qq = str(cfg.get("bot_qq") or "").strip()
@@ -344,7 +386,7 @@ def start_napcat(cfg: dict) -> None:
     args = [str(exe), "index.js"]
     if qq:
         args += ["-q", qq]
-    napcat.start(args, napcat_dir)
+    napcat.start(args, napcat_dir, env=napcat_extra_env(cfg))
     # 记录启动时刻：进程从 launcher 到 worker 就绪有几秒真空，主循环若在此刻巡检
     # 会误判"未运行"而重复拉起 → 双开
     wd_state_write(napcat_start_at=time.time())
@@ -471,9 +513,11 @@ def scan_log() -> None:
         if any(p in line for p in OK_PATTERNS):
             if not state["logged_in"]:
                 log("检测到协议端登录成功 ✅")
-            state.update(logged_in=True, fail_since=None, attempts=0,
-                         last_attempt=0.0, alerted=False, probe_fails=0)
-            clear_alert()
+                # 仅在“掉线→恢复”跳变时清零计数；若每轮日志扫描都清零，
+                # 假在线期间心跳失败记录永远攒不到阈值（复测被反复重置）
+                state.update(logged_in=True, fail_since=None, attempts=0,
+                             last_attempt=0.0, alerted=False, probe_fails=0)
+                clear_alert()
         elif any(p in line for p in FAIL_PATTERNS):
             if state["logged_in"]:
                 log("检测到登录失效（账号被下线），准备自动重新登录…")
@@ -494,9 +538,11 @@ def refresh_login_state(cfg: dict) -> None:
             # 登录刚恢复：给会话一个稳定期，稳定期过后开始心跳自检
             interval = int(cfg.get("zombie_check_interval") or 3600)
             state["last_probe"] = time.time() - max(interval - ZOMBIE_LOGIN_GRACE, 0)
-        state.update(logged_in=True, fail_since=None, attempts=0,
-                     last_attempt=0.0, alerted=False, probe_fails=0)
-        clear_alert()
+            # 仅在“掉线→恢复”跳变时清零计数。假在线时 get_login_info 会谎报“已登录”，
+            # 若每轮都清零，心跳失败记录永远攒不到 2 次（60 秒快速复测被反复重置为 600 秒）
+            state.update(logged_in=True, fail_since=None, attempts=0,
+                         last_attempt=0.0, alerted=False, probe_fails=0)
+            clear_alert()
     elif http_state is False:
         if state["logged_in"]:
             log("HTTP 检测：登录已失效")
@@ -725,19 +771,36 @@ def check_zombie(cfg: dict) -> None:
         return  # 静默期不发自检消息
     interval = int(cfg.get("zombie_check_interval") or 3600)
     now = time.time()
-    # 正常时按 interval 自检；一旦有失败记录则快速复测，缩短确认时间
-    due = ZOMBIE_RETRY_FAST if state["probe_fails"] else interval
+    # 正常时按 interval 自检；一旦有失败或无响应记录则快速复测，缩短确认时间
+    due = ZOMBIE_RETRY_FAST if (state["probe_fails"] or state["probe_none"]) else interval
     if now - state["last_probe"] < due:
         return
     state["last_probe"] = now
     ok = probe_send(cfg)
     if ok is True:
-        if state["probe_fails"]:
+        if state["probe_fails"] or state["probe_none"]:
             log("心跳自检恢复正常 ✅")
         state["probe_fails"] = 0
+        state["probe_none"] = 0
         return
     if ok is None:
-        return  # 接口不可用，无法判断
+        # 接口无响应：可能是 NapCat 的 sendMsg 内部通道挂起（假在线加深的表现）。
+        # 不能一直静默——连续多次无响应视为协议端整体僵死，兜底强制重登
+        state["probe_none"] += 1
+        if state["probe_none"] == 1:
+            log("⚠ 心跳自检接口无响应（第 1 次），将持续复测…")
+        elif state["probe_none"] % 5 == 0:
+            log(f"⚠ 心跳自检接口已连续 {state['probe_none']} 次无响应")
+        if state["probe_none"] >= PROBE_NONE_LIMIT:
+            log("判定协议端整体僵死（接口持续无响应），强制重新登录")
+            state["probe_none"] = 0
+            state["probe_fails"] = 0
+            state["logged_in"] = False
+            state["fail_since"] = time.time()
+            state["last_attempt"] = 0.0  # 跳过冷却，立即重登
+            relogin(cfg, "协议端接口持续无响应（整体僵死）强制重登")
+        return
+    state["probe_none"] = 0
     state["probe_fails"] += 1
     log(f"⚠️ 心跳自检失败（{state['probe_fails']}/{ZOMBIE_FAILS}）："
         f"实测发消息被拒，会话可能已僵死（假在线）")
@@ -840,6 +903,8 @@ def supervise(cfg: dict) -> None:
         except OSError:
             pass
     log("看门狗已启动：守护协议端 + 机器人服务，登录失效将自动重登，睡眠唤醒自动自愈")
+    if not (LOGS / "watchdog.log").exists():
+        log("⚠ watchdog.log 无法写入（可能被安全软件拦截），日志只在窗口显示，排障会受影响")
     last_tick = time.time()
     while True:
         now = time.time()
@@ -888,6 +953,7 @@ def print_status(cfg: dict) -> None:
 
 
 def main() -> None:
+    disable_quickedit()
     parser = argparse.ArgumentParser(description="QQ群管机器人看门狗")
     parser.add_argument("--relogin", action="store_true", help="立即重启协议端并重新登录")
     parser.add_argument("--status", action="store_true", help="打印状态后退出")

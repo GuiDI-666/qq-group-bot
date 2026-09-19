@@ -144,6 +144,12 @@ def linux_uninstall() -> int:
 
 
 def main() -> int:
+    # SSH 远程执行时控制台是 GBK，直接 print emoji 会 UnicodeEncodeError；
+    # 统一按 UTF-8 + replace 输出（与 watchdog.py 同款处理）
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description="QQ群管机器人 开机自启管理")
     parser.add_argument("action", choices=["install", "uninstall", "status"])
     args = parser.parse_args()
