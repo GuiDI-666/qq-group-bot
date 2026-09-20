@@ -2,7 +2,7 @@
 
 > 本项目的所有版本变更记录。新版本发布时在最上方追加。
 > 格式参考：[Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)
-> 当前版本：**v1.8.1**（见 `VERSION` 文件）
+> 当前版本：**v1.8.2**（见 `VERSION` 文件）
 
 ## 发布流程（给维护者）
 
@@ -13,6 +13,18 @@ python deploy/release.py v1.x.x "一句话说明"
 ```
 
 （release.py 会自动完成：更新 VERSION、写入 CHANGELOG 模板条目、commit 并打同名 tag，配置了 origin 远程仓库时自动 push）
+
+---
+
+## [v1.8.2] - 2026-09-20
+
+### 修复
+
+- **入群审批等级查询失效**：NapCat 的 `get_stranger_info` 返回的 QQ 等级字段名为 `qqLevel`（驼峰），并非 OneBot v11 标准文档中的 `level`，导致审批插件永远取到空值、按 `fallback` 策略忽略申请（表现：入群申请既不自动通过也不拒绝）。现按 `level` → `qqLevel` → `qq_level` 顺序多字段兼容；都取不到时日志会列出实际返回的候选键，便于下次排查。实测：申请人 94 级（`qqLevel` 命中），修复后正确判定为自动通过
+
+### 排查提示
+
+- 其他插件如需读取等级类字段，请一律做多键兼容写法（NapCat 各版本字段命名不一致，已有先例）
 
 ---
 

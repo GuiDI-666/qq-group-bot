@@ -45,11 +45,24 @@ async def handle_group_request(bot: Bot, event: GroupRequestEvent):
 
     min_level = int(cfg.get("min_level", 30))
 
-    # 查询申请者QQ等级（NapCat 支持 level 字段）
+    # 查询申请者QQ等级
+    # 注意：NapCat 返回的字段名不统一——4.18.28 实测为 qqLevel（驼峰），
+    # 老版本 / 其他实现可能是 level；两个都试，避免因字段名不匹配
+    # 而误判"拿不到等级"从而放过申请（2026-09-20 实测修复）
     level = None
     try:
         info = await bot.get_stranger_info(user_id=event.user_id, no_cache=True)
-        level = info.get("level")
+        for key in ("level", "qqLevel", "qq_level"):
+            v = info.get(key)
+            if v is not None:
+                level = v
+                logger.debug(f"{event.user_id} 的等级字段命中 {key}={v}")
+                break
+        if level is None:
+            logger.info(
+                f"{event.user_id} 返回数据中无等级字段（现有键："
+                f"{[k for k in info.keys() if 'evel' in k or 'level' in k.lower()]}）"
+            )
     except Exception as e:
         logger.warning(f"查询申请者信息失败: {e}")
 
